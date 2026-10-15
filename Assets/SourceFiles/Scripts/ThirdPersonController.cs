@@ -1,4 +1,6 @@
 ﻿ using UnityEngine;
+using Mirror;
+using Unity.Cinemachine;
 #if ENABLE_INPUT_SYSTEM 
 using UnityEngine.InputSystem;
 #endif
@@ -12,7 +14,7 @@ namespace StarterAssets
 #if ENABLE_INPUT_SYSTEM 
     [RequireComponent(typeof(PlayerInput))]
 #endif
-    public class ThirdPersonController : MonoBehaviour
+    public class ThirdPersonController : NetworkBehaviour
     {
         [Header("Player")]
         [Tooltip("Move speed of the character in m/s")]
@@ -135,11 +137,29 @@ public bool IsRespawning { get; set; } = false;
 
         private void Awake()
         {
-            // get a reference to our main camera
+            // get a reference to the camera inside this player's prefab, not whichever player's camera has the MainCamera tag
             if (_mainCamera == null)
             {
-                _mainCamera = GameObject.FindGameObjectWithTag("MainCamera");
+                Camera playerCamera = GetComponentInParent<NetworkIdentity>().GetComponentInChildren<Camera>(true);
+                _mainCamera = playerCamera.gameObject;
             }
+        }
+
+        public override void OnStartClient()
+        {
+            if (isLocalPlayer) return;
+
+            // remote players: turn off their cameras, audio listener and input so only our own player drives the view
+            NetworkIdentity root = GetComponentInParent<NetworkIdentity>();
+            foreach (CinemachineCamera cinemachineCamera in root.GetComponentsInChildren<CinemachineCamera>(true))
+                cinemachineCamera.gameObject.SetActive(false);
+            foreach (Camera camera in root.GetComponentsInChildren<Camera>(true))
+                camera.gameObject.SetActive(false);
+            foreach (AudioListener listener in root.GetComponentsInChildren<AudioListener>(true))
+                listener.enabled = false;
+#if ENABLE_INPUT_SYSTEM
+            GetComponent<PlayerInput>().enabled = false;
+#endif
         }
 
         private void Start()
@@ -168,6 +188,8 @@ public bool IsRespawning { get; set; } = false;
 
         private void Update()
         {
+            if (!isLocalPlayer) return;
+
             _hasAnimator = TryGetComponent(out _animator);
 
             JumpAndGravity();
@@ -177,6 +199,8 @@ public bool IsRespawning { get; set; } = false;
 
         private void LateUpdate()
         {
+            if (!isLocalPlayer) return;
+
             CameraRotation();
         }
 
