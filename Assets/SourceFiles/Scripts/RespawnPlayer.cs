@@ -18,6 +18,7 @@ namespace StarterAssets
         public CinemachineCamera vCam;
 
         private ThirdPersonController _thirdPersonController;
+        private FirstPersonController _firstPersonController;
         public AudioClip respawnSound;
 
 
@@ -34,11 +35,12 @@ namespace StarterAssets
         Debug.LogError("CharacterController component is required for RespawnPlayer script!");
     }
 
-    // Get ThirdPersonController reference
+    // Get ThirdPersonController or FirstPersonController reference
     _thirdPersonController = GetComponent<ThirdPersonController>();
-    if (_thirdPersonController == null)
+    _firstPersonController = GetComponent<FirstPersonController>();
+    if (_thirdPersonController == null && _firstPersonController == null)
     {
-        Debug.LogError("ThirdPersonController component is required for RespawnPlayer!");
+        Debug.LogError("ThirdPersonController or FirstPersonController is required for RespawnPlayer!");
     }
 }
 
@@ -76,6 +78,10 @@ namespace StarterAssets
     {
         thirdPersonController.ResetCameraRotation(90f); // Reset camera's Y rotation to 90 degrees
     }
+    if (_firstPersonController != null)
+    {
+        _firstPersonController.ResetCameraRotation(90f);
+    }
 
     AudioSource.PlayClipAtPoint(respawnSound, transform.position);
 
@@ -84,6 +90,11 @@ namespace StarterAssets
         private void ResetVerticalVelocity()
         {
             // Ensures no residual vertical velocity after respawning
+            if (_firstPersonController != null)
+            {
+                _firstPersonController.ResetVerticalVelocity();
+                return;
+            }
             if (TryGetComponent<ThirdPersonController>(out ThirdPersonController controller))
             {
                 // Access the private _verticalVelocity via the public interface, if exposed
