@@ -25,6 +25,10 @@ namespace DonkaPhiPisa.Inventory
 
         [TextArea] public string description;
 
+        [Tooltip("What gets spawned when a player drops this item (needs WorldItem + NetworkIdentity, " +
+                 "and must be in the NetworkManager's 'Registered Spawnable Prefabs' list). Empty = can't be dropped.")]
+        public GameObject worldPrefab;
+
         private void OnValidate()
         {
             if (string.IsNullOrWhiteSpace(itemId)) itemId = name.ToLowerInvariant().Replace(" ", "_");

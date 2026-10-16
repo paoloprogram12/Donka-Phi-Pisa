@@ -8,7 +8,7 @@ namespace DonkaPhiPisa.Inventory
 {
     /// <summary>
     /// Local player only: looks where the camera points, shows "[E] ..." for interactables,
-    /// sends E presses to the server, and handles hotbar selection (1-4 keys / scroll wheel).
+    /// sends E (interact) and G (drop) presses to the server, and handles hotbar selection (1-4 keys / scroll wheel).
     /// Lives on the "Robot" object next to FirstPersonController and PlayerInventory.
     /// </summary>
     [RequireComponent(typeof(PlayerInventory))]
@@ -46,6 +46,7 @@ namespace DonkaPhiPisa.Inventory
 
             FindTarget();
             HandleInteractKey();
+            HandleDropKey();
             HandleHotbarKeys();
         }
 
@@ -102,6 +103,13 @@ namespace DonkaPhiPisa.Inventory
             if (InteractPressed()) CmdInteract(_currentTargetIdentity);
         }
 
+        private void HandleDropKey()
+        {
+            // only bother the server if we're actually holding something
+            if (DropPressed() && !_inventory.SelectedSlotData.IsEmpty)
+                _inventory.CmdDropSelected();
+        }
+
         private void HandleHotbarKeys()
         {
             int slotCount = _inventory.slots.Count;
@@ -131,6 +139,15 @@ namespace DonkaPhiPisa.Inventory
             return Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame;
 #else
             return Input.GetKeyDown(KeyCode.E);
+#endif
+        }
+
+        private static bool DropPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            return Keyboard.current != null && Keyboard.current.gKey.wasPressedThisFrame;
+#else
+            return Input.GetKeyDown(KeyCode.G);
 #endif
         }
 

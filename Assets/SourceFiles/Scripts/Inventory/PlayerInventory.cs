@@ -25,6 +25,13 @@ namespace DonkaPhiPisa.Inventory
         [Tooltip("Number of hotbar slots.")]
         [Min(1)] public int slotCount = 4;
 
+        [Header("Dropping (G)")]
+        [Tooltip("How far in front of the player a dropped item lands, in meters.")]
+        public float dropDistance = 0f;
+
+        [Tooltip("Height the drop is aimed from (about chest height).")]
+        public float dropHeight = 1.2f;
+
         /// <summary>Synced from server to all clients. Always slotCount long.</summary>
         public readonly SyncList<InventorySlot> slots = new SyncList<InventorySlot>();
 
@@ -114,6 +121,21 @@ namespace DonkaPhiPisa.Inventory
             return true;
         }
 
+        /// <summary>Removes items from one specific slot. Returns false if that slot doesn't have enough.</summary>
+        [Server]
+        public bool TryRemoveFromSlot(int index, int amount = 1)
+        {
+            if (index < 0 || index >= slots.Count) return false;
+            InventorySlot slot = slots[index];
+            if (slot.IsEmpty || slot.count < amount) return false;
+
+            int left = slot.count - amount;
+            slots[index] = left > 0
+                ? new InventorySlot { itemId = slot.itemId, count = left }
+                : new InventorySlot { itemId = "", count = 0 };
+            return true;
+        }
+
         // ---------------- client -> server ----------------
 
         [Command]
@@ -121,6 +143,79 @@ namespace DonkaPhiPisa.Inventory
         {
             if (index < 0 || index >= slots.Count) return;
             selectedSlot = index;
+        }
+
+        /// <summary>Drops ONE of the held item in front of the player.</summary>
+        [Command]
+        public void CmdDropSelected()
+        {
+            // 1) what are we holding? (the server checks its own copy, never trusts the client)
+            InventorySlot slot = SelectedSlotData;
+            if (slot.IsEmpty) return;
+
+            ItemData item = ItemDatabase.Get(slot.itemId);
+            if (item == null) return;
+            if (item.worldPrefab == null)
+            {
+                TargetShowMessage($"Can't drop {item.displayName}");
+                return;
+            }
+
+            // 2) where should it land?
+            Vector3 position = FindDropPosition();
+            Quaternion rotation = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
+
+            // 3) take it out of the inventory, then put it in the world
+            if (!TryRemoveFromSlot(selectedSlot, 1)) return;
+
+            GameObject dropped = Instantiate(item.worldPrefab, position, rotation);
+            if (dropped.TryGetComponent(out WorldItem worldItem))
+            {
+                worldItem.item = item;
+                worldItem.amount = 1;
+            }
+            SitOnGround(dropped, position.y);
+
+            // 4) tell every client to create their own copy
+            NetworkServer.Spawn(dropped);
+        }
+
+        // ---------------- server helpers for dropping ----------------
+
+        /// <summary>A spot about 1 m in front of the player, pulled back if a wall is in the way, then down onto the floor.</summary>
+        [Server]
+        private Vector3 FindDropPosition()
+        {
+            Vector3 forward = transform.forward;
+            forward.y = 0f;
+            forward.Normalize();
+
+            Vector3 chest = transform.position + Vector3.up * dropHeight;
+            float distance = dropDistance;
+
+            // don't drop through walls: stop just short of whatever is in front of us
+            if (Physics.Raycast(chest, forward, out RaycastHit wallHit, dropDistance, ~0, QueryTriggerInteraction.Ignore))
+                distance = Mathf.Max(0.2f, wallHit.distance - 0.25f);
+
+            Vector3 inFront = chest + forward * distance;
+
+            // find the floor below that point
+            if (Physics.Raycast(inFront, Vector3.down, out RaycastHit groundHit, dropHeight + 5f, ~0, QueryTriggerInteraction.Ignore))
+                return groundHit.point;
+
+            return transform.position + forward * distance; // no floor found: drop at foot level
+        }
+
+        /// <summary>Moves the object up so its lowest point rests at groundY instead of sinking into the floor.</summary>
+        private static void SitOnGround(GameObject go, float groundY)
+        {
+            Renderer[] renderers = go.GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0) return;
+
+            Bounds bounds = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+
+            go.transform.position += Vector3.up * (groundY - bounds.min.y + 0.01f);
         }
 
         // ---------------- server -> owning client ----------------

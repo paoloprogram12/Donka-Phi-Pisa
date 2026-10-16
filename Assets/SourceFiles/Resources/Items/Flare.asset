@@ -17,3 +17,4 @@ MonoBehaviour:
   icon: {fileID: 0}
   maxStack: 3
   description: Burns bright red for a while. Throwable.
+  worldPrefab: {fileID: 1027351892208169804, guid: fd5abc0ec043b4f4297c0050df4b2b5e, type: 3}

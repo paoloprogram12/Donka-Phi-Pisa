@@ -17,3 +17,4 @@ MonoBehaviour:
   icon: {fileID: 0}
   maxStack: 5
   description: Recharges the flashlight.
+  worldPrefab: {fileID: 693559959428452172, guid: 6c66ad9e099a60c4683eb88e04cc323f, type: 3}

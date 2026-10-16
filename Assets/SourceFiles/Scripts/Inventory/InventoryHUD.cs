@@ -86,7 +86,10 @@ namespace DonkaPhiPisa.Inventory
             // name of the held item above the hotbar
             ItemData held = _inventory.SelectedItem;
             if (held != null)
-                GUI.Label(new Rect(0, y - 28f, Screen.width, 24f), held.displayName, _center);
+            {
+                string hint = held.worldPrefab != null ? "   [G] Drop" : "";
+                GUI.Label(new Rect(0, y - 28f, Screen.width, 24f), held.displayName + hint, _center);
+            }
         }
 
         private void DrawMessage()

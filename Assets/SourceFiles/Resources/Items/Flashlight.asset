@@ -17,3 +17,4 @@ MonoBehaviour:
   icon: {fileID: 0}
   maxStack: 1
   description: Lights the way. Needs batteries.
+  worldPrefab: {fileID: 4003353398898326883, guid: 3574cecc2dcd83f4bb49f7d0e5c9e023, type: 3}
